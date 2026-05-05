@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Progress Minggu 2 — WebGIS BTS Riau</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0B2341;--navy2:#0f2d52;--blue:#1565C0;--cyan:#0097A7;
+  --accent:#00C8FF;--green:#00C853;--amber:#FF9800;--red:#F44336;
+  --white:#fff;--dark:#08111f;--surface:rgba(255,255,255,0.04);
+  --border:rgba(0,200,255,0.12);--border2:rgba(0,200,255,0.25);
+  --text:rgba(255,255,255,0.9);--muted:rgba(255,255,255,0.45);
+  --glass:rgba(11,35,65,0.85);
+}
+html,body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);line-height:1.5}
+
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 10% 10%,rgba(0,151,167,0.12) 0%,transparent 70%),
+    radial-gradient(ellipse 50% 40% at 90% 80%,rgba(21,101,192,0.1) 0%,transparent 70%),
+    radial-gradient(ellipse 30% 30% at 50% 50%,rgba(0,200,255,0.04) 0%,transparent 60%);
+}
+
+.wrap{position:relative;z-index:1;max-width:960px;margin:0 auto;padding:40px 24px 80px}
+
+/* ── HEADER ── */
+.hdr{margin-bottom:40px}
+.hdr-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.badge{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;border-radius:4px;letter-spacing:0.5px;text-transform:uppercase}
+.badge-week{background:rgba(0,200,255,0.12);border:1px solid rgba(0,200,255,0.3);color:var(--accent)}
+.badge-phase{background:rgba(0,151,167,0.12);border:1px solid rgba(0,151,167,0.3);color:#4DD0E1}
+.hdr-title{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:6px}
+.hdr-title span{color:var(--accent)}
+.hdr-sub{font-size:14px;color:var(--muted)}
+.hdr-right{text-align:right;flex-shrink:0}
+.big-pct{font-family:'Space Mono',monospace;font-size:48px;font-weight:700;color:var(--accent);line-height:1;transition:color 0.4s}
+.big-lbl{font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:1px}
+
+/* ── GLOBAL PROGRESS ── */
+.gbar-wrap{margin-bottom:36px}
+.gbar-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
+.gbar-track{height:8px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden}
+.gbar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--accent));transition:width 0.5s cubic-bezier(.4,0,.2,1);width:0%}
+
+/* ── SUMMARY CHIPS ── */
+.summary{display:flex;gap:12px;margin-bottom:36px;flex-wrap:wrap}
+.chip{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;flex:1;min-width:120px;text-align:center}
+.chip-num{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#fff;display:block}
+.chip-lbl{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:0.5px}
+#chip-done .chip-num{color:var(--green)}
+#chip-left .chip-num{color:var(--amber)}
+
+/* ── GRID ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+
+/* ── MEMBER CARD ── */
+.card{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px;
+  backdrop-filter:blur(12px);
+  transition:border-color 0.25s,transform 0.2s;
+  position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--c,var(--accent)),transparent);
+  opacity:0;transition:opacity 0.3s;
+}
+.card:hover{border-color:var(--border2);transform:translateY(-2px)}
+.card:hover::before{opacity:1}
+
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;flex-shrink:0}
+.card-info{}
+.card-name{font-size:14px;font-weight:600;color:#fff;margin-bottom:2px}
+.card-role{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+
+/* mini progress per card */
+.card-prog{margin-bottom:14px}
+.card-prog-bar{height:3px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden}
+.card-prog-fill{height:100%;border-radius:99px;transition:width 0.4s ease;background:var(--c,var(--accent))}
+.card-prog-txt{font-size:10px;color:var(--muted);margin-top:4px;text-align:right;font-family:'Space Mono',monospace}
+
+/* tasks */
+.tasks{list-style:none;display:flex;flex-direction:column;gap:10px}
+.task{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:6px 8px;border-radius:8px;transition:background 0.15s;-webkit-tap-highlight-color:transparent}
+.task:hover{background:rgba(255,255,255,0.04)}
+.task:active{background:rgba(0,200,255,0.06)}
+.cb{
+  width:18px;height:18px;border-radius:5px;
+  border:1.5px solid rgba(255,255,255,0.25);
+  flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;position:relative;
+}
+.cb svg{opacity:0;transform:scale(0.5);transition:all 0.2s}
+.cb.done{border-color:transparent}
+.cb.done svg{opacity:1;transform:scale(1)}
+.task-text{font-size:13px;color:rgba(255,255,255,0.8);line-height:1.5;transition:color 0.2s}
+.task-text.done-txt{color:rgba(255,255,255,0.3);text-decoration:line-through;text-decoration-color:rgba(255,255,255,0.2)}
+.tag{display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:5px;letter-spacing:0.3px;text-transform:uppercase;vertical-align:middle}
+.tag-urgent{background:rgba(244,67,54,0.15);border:1px solid rgba(244,67,54,0.3);color:#EF9A9A}
+.tag-collab{background:rgba(0,200,83,0.12);border:1px solid rgba(0,200,83,0.25);color:#69F0AE}
+
+/* ── LEGEND ── */
+.legend{margin-top:32px;display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.ldot{width:8px;height:8px;border-radius:2px}
+
+/* ── NOTE ── */
+.note{margin-top:28px;background:rgba(0,200,255,0.05);border:1px solid rgba(0,200,255,0.15);border-radius:12px;padding:16px 20px;font-size:13px;color:rgba(255,255,255,0.55);line-height:1.7}
+.note strong{color:rgba(255,255,255,0.8)}
+
+/* ── FOOTER ── */
+.footer{margin-top:40px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:rgba(255,255,255,0.15);letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="badge-row">
+      <span class="badge badge-week">Minggu 2</span>
+      <span class="badge badge-phase">Pengumpulan Data</span>
+    </div>
+    <div class="hdr-top">
+      <div>
+        <div class="hdr-title">Progress Tracker<br><span>WebGIS BTS Riau</span></div>
+        <div class="hdr-sub">Centang task yang sudah selesai dikerjakan · Kelompok 2 GM-E</div>
+      </div>
+      <div class="hdr-right">
+        <div class="big-pct" id="big-pct">0%</div>
+        <div class="big-lbl">Selesai</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GLOBAL BAR -->
+  <div class="gbar-wrap">
+    <div class="gbar-meta">
+      <span>Progres keseluruhan</span>
+      <span id="gbar-txt">0 / 17 task</span>
+    </div>
+    <div class="gbar-track"><div class="gbar-fill" id="gbar-fill"></div></div>
+  </div>
+
+  <!-- CHIPS -->
+  <div class="summary">
+    <div class="chip" id="chip-done"><span class="chip-num" id="chip-done-n">0</span><div class="chip-lbl">Selesai</div></div>
+    <div class="chip" id="chip-left"><span class="chip-num" id="chip-left-n">17</span><div class="chip-lbl">Sisa Task</div></div>
+    <div class="chip"><span class="chip-num" id="chip-members">0/6</span><div class="chip-lbl">Anggota Progress</div></div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="grid">
+
+    <!-- Shalna -->
+    <div class="card" style="--c:#00C8FF" data-member="SH">
+      <div class="card-head">
+        <div class="av" style="background:rgba(0,200,255,0.15);color:#00C8FF">SH</div>
+        <div class="card-info">
+          <div class="card-name">Shalna Agisha</div>
+          <div class="card-role">GIS Analyst</div>
+        </div>
+      </div>
+      <div class="card-prog">
+        <div class="card-prog-bar"><div class="card-prog-fill" id="prog-SH" style="width:0%"></div></div>
+        <div class="card-prog-txt" id="txt-SH">0 / 4</div>
+      </div>
+      <ul class="tasks">
+        <li class="task" onclick="toggle(this,'SH')">
+          <div class="cb" style="--c:#00C8FF"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#00C8FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Akuisisi data BTS dari OpenCelliD / KOMINFO <span class="tag tag-urgent">utama</span></span>
+        </li>
+        <li class="task" onclick="toggle(this,'SH')">
+          <div class="cb" style="--c:#00C8FF"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#00C8FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Download batas administrasi Riau (GeoJSON kabupaten/kecamatan)</span>
+        </li>
+        <li class="task" onclick="toggle(this,'SH')">
+          <div class="cb" style="--c:#00C8FF"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#00C8FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Cek kelengkapan kolom data BTS (lat, lng, operator, jaringan, status)</span>
+        </li>
+        <li class="task" onclick="toggle(this,'SH')">
+          <div class="cb" style="--c:#00C8FF"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#00C8FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Ambil data DEM/basemap Riau untuk analisis blank spot</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Dirra -->
+    <div class="card" style="--c:#4CAF50" data-member="DR">
+      <div class="card-head">
+        <div class="av" style="background:rgba(76,175,80,0.15);color:#4CAF50">DR</div>
+        <div class="card-info">
+          <div class="card-name">Dirra Mega</div>
+          <div class="card-role">Database Engineer</div>
+        </div>
+      </div>
+      <div class="card-prog">
+        <div class="card-prog-bar"><div class="card-prog-fill" id="prog-DR" style="width:0%"></div></div>
+        <div class="card-prog-txt" id="txt-DR">0 / 3</div>
+      </div>
+      <ul class="tasks">
+        <li class="task" onclick="toggle(this,'DR')">
+          <div class="cb" style="--c:#4CAF50"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#4CAF50" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Setup PostgreSQL + ekstensi PostGIS di server <span class="tag tag-urgent">utama</span></span>
+        </li>
+        <li class="task" onclick="toggle(this,'DR')">
+          <div class="cb" style="--c:#4CAF50"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#4CAF50" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Buat skema tabel sesuai ERD (bts, operator, jaringan, wilayah, user)</span>
+        </li>
+        <li class="task" onclick="toggle(this,'DR')">
+          <div class="cb" style="--c:#4CAF50"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#4CAF50" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Import data dummy 25 BTS ke PostGIS untuk testing <span class="tag tag-collab">+ Satrio</span></span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Satrio -->
+    <div class="card" style="--c:#FF9800" data-member="SA">
+      <div class="card-head">
+        <div class="av" style="background:rgba(255,152,0,0.15);color:#FF9800">SA</div>
+        <div class="card-info">
+          <div class="card-name">Satrio Aji</div>
+          <div class="card-role">Backend Developer</div>
+        </div>
+      </div>
+      <div class="card-prog">
+        <div class="card-prog-bar"><div class="card-prog-fill" id="prog-SA" style="width:0%"></div></div>
+        <div class="card-prog-txt" id="txt-SA">0 / 3</div>
+      </div>
+      <ul class="tasks">
+        <li class="task" onclick="toggle(this,'SA')">
+          <div class="cb" style="--c:#FF9800"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#FF9800" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Setup environment server (Node.js/PHP/Python + framework API) <span class="tag tag-urgent">utama</span></span>
+        </li>
+        <li class="task" onclick="toggle(this,'SA')">
+          <div class="cb" style="--c:#FF9800"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#FF9800" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Buat endpoint GET /bts dasar untuk testing koneksi database</span>
+        </li>
+        <li class="task" onclick="toggle(this,'SA')">
+          <div class="cb" style="--c:#FF9800"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#FF9800" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Koneksi GeoServer ke PostGIS layer WMS <span class="tag tag-collab">+ Dirra</span></span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Mustafa -->
+    <div class="card" style="--c:#E91E8C" data-member="MR">
+      <div class="card-head">
+        <div class="av" style="background:rgba(233,30,140,0.15);color:#E91E8C">MR</div>
+        <div class="card-info">
+          <div class="card-name">Mustafa Rahman</div>
+          <div class="card-role">Frontend Developer</div>
+        </div>
+      </div>
+      <div class="card-prog">
+        <div class="card-prog-bar"><div class="card-prog-fill" id="prog-MR" style="width:0%"></div></div>
+        <div class="card-prog-txt" id="txt-MR">0 / 3</div>
+      </div>
+      <ul class="tasks">
+        <li class="task" onclick="toggle(this,'MR')">
+          <div class="cb" style="--c:#E91E8C"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#E91E8C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Ganti data dummy HTML → fetch dari API endpoint lokal Satrio</span>
+        </li>
+        <li class="task" onclick="toggle(this,'MR')">
+          <div class="cb" style="--c:#E91E8C"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#E91E8C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Tambah titik BTS dummy ke HTML untuk testing filter & clustering</span>
+        </li>
+        <li class="task" onclick="toggle(this,'MR')">
+          <div class="cb" style="--c:#E91E8C"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#E91E8C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Validasi fitur filter operator + jaringan sudah bekerja benar di peta</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tota -->
+    <div class="card" style="--c:#9C27B0" data-member="TL">
+      <div class="card-head">
+        <div class="av" style="background:rgba(156,39,176,0.15);color:#9C27B0">TL</div>
+        <div class="card-info">
+          <div class="card-name">Tota Lolita</div>
+          <div class="card-role">UI/UX Designer</div>
+        </div>
+      </div>
+      <div class="card-prog">
+        <div class="card-prog-bar"><div class="card-prog-fill" id="prog-TL" style="width:0%"></div></div>
+        <div class="card-prog-txt" id="txt-TL">0 / 2</div>
+      </div>
+      <ul class="tasks">
+        <li class="task" onclick="toggle(this,'TL')">
+          <div class="cb" style="--c:#9C27B0"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#9C27B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Finalisasi wireframe halaman Dashboard & detail BTS</span>
+        </li>
+        <li class="task" onclick="toggle(this,'TL')">
+          <div class="cb" style="--c:#9C27B0"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#9C27B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Buat mockup tampilan panel statistik (bar chart operator & jaringan)</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Ignatius -->
+    <div class="card" style="--c:#26C6DA" data-member="IS">
+      <div class="card-head">
+        <div class="av" style="background:rgba(38,198,218,0.15);color:#26C6DA">IS</div>
+        <div class="card-info">
+          <div class="card-name">Ignatius Swara</div>
+          <div class="card-role">Project Manager</div>
+        </div>
+      </div>
+      <div class="card-prog">
+        <div class="card-prog-bar"><div class="card-prog-fill" id="prog-IS" style="width:0%"></div></div>
+        <div class="card-prog-txt" id="txt-IS">0 / 2</div>
+      </div>
+      <ul class="tasks">
+        <li class="task" onclick="toggle(this,'IS')">
+          <div class="cb" style="--c:#26C6DA"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#26C6DA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Buat GitHub repo + struktur folder project <span class="tag tag-urgent">utama</span></span>
+        </li>
+        <li class="task" onclick="toggle(this,'IS')">
+          <div class="cb" style="--c:#26C6DA"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#26C6DA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <span class="task-text">Buat jadwal meeting mingguan & format laporan progres tim</span>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="ldot" style="background:rgba(244,67,54,0.6)"></div>Prioritas utama minggu ini</div>
+    <div class="legend-item"><div class="ldot" style="background:rgba(0,200,83,0.5)"></div>Task kolaborasi antar anggota</div>
+  </div>
+
+  <!-- NOTE -->
+  <div class="note">
+    💡 <strong>Fokus Minggu 2:</strong> Shalna dan Dirra adalah kunci — tanpa data BTS asli dan database yang berjalan, anggota lain tidak bisa lanjut ke tahap berikutnya. Gunakan <strong>25 data dummy</strong> yang sudah ada di HTML sebagai placeholder sementara sambil data asli dari OpenCelliD/KOMINFO diproses.
+  </div>
+
+  <div class="footer">KELOMPOK 2 GM-E · SIG TERAPAN · WEBGIS BTS RIAU</div>
+</div>
+
+<script>
+const COUNTS = {SH:4,DR:3,SA:3,MR:3,TL:2,IS:2};
+const TOTAL = Object.values(COUNTS).reduce((a,b)=>a+b,0);
+const state = {};
+Object.keys(COUNTS).forEach(k=>state[k]=0);
+
+function toggle(el,member){
+  const cb = el.querySelector('.cb');
+  const txt = el.querySelector('.task-text');
+  const isDone = cb.classList.toggle('done');
+  txt.classList.toggle('done-txt',isDone);
+  cb.style.background = isDone ? 'var(--c)' : '';
+  state[member] += isDone ? 1 : -1;
+  updateCard(member);
+  updateGlobal();
+}
+
+function updateCard(m){
+  const done = state[m];
+  const total = COUNTS[m];
+  const pct = Math.round((done/total)*100);
+  document.getElementById('prog-'+m).style.width = pct+'%';
+  document.getElementById('txt-'+m).textContent = done+' / '+total;
+}
+
+function updateGlobal(){
+  const done = Object.values(state).reduce((a,b)=>a+b,0);
+  const pct = Math.round((done/TOTAL)*100);
+  document.getElementById('gbar-fill').style.width = pct+'%';
+  document.getElementById('gbar-txt').textContent = done+' / '+TOTAL+' task';
+  document.getElementById('big-pct').textContent = pct+'%';
+  document.getElementById('chip-done-n').textContent = done;
+  document.getElementById('chip-left-n').textContent = TOTAL-done;
+
+  const active = Object.values(state).filter(v=>v>0).length;
+  document.getElementById('chip-members').textContent = active+'/6';
+
+  const bigPct = document.getElementById('big-pct');
+  if(pct>=80) bigPct.style.color='#00C853';
+  else if(pct>=40) bigPct.style.color='#FF9800';
+  else bigPct.style.color='#00C8FF';
+}
+</script>
+</body>
+</html>
