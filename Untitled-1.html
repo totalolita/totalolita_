@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>WebGIS Persebaran BTS Riau</title>
+
+<!-- FONT -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<!-- LEAFLET -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<!-- CLUSTER -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<!-- CHART -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  background:#08111f;
+  color:white;
+  font-family:'DM Sans',sans-serif;
+}
+
+/* HEADER */
+
+.header{
+  padding:30px;
+  background:#0B2341;
+  border-bottom:1px solid rgba(0,200,255,0.2);
+}
+
+.title{
+  font-size:34px;
+  font-family:'Space Mono',monospace;
+}
+
+.title span{
+  color:#00C8FF;
+}
+
+.subtitle{
+  margin-top:8px;
+  color:rgba(255,255,255,0.6);
+}
+
+/* LAYOUT */
+
+.container{
+  width:95%;
+  max-width:1400px;
+  margin:auto;
+  padding:25px 0;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:320px 1fr;
+  gap:20px;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
+
+.card{
+  background:#0B2341;
+  border:1px solid rgba(0,200,255,0.15);
+  border-radius:18px;
+  padding:22px;
+}
+
+.card-title{
+  font-size:18px;
+  margin-bottom:18px;
+}
+
+/* MAP */
+
+#map{
+  width:100%;
+  height:700px;
+  border-radius:18px;
+}
+
+/* FILTER */
+
+select{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#132d52;
+  color:white;
+  margin-top:10px;
+}
+
+/* STAT */
+
+.stat{
+  margin-bottom:15px;
+}
+
+.stat-number{
+  font-size:32px;
+  font-weight:bold;
+  color:#00C8FF;
+}
+
+.stat-label{
+  color:rgba(255,255,255,0.5);
+}
+
+/* LEGEND */
+
+.legend{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.dot{
+  width:16px;
+  height:16px;
+  border-radius:4px;
+}
+
+/* BUTTON */
+
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(90deg,#0097A7,#00C8FF);
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+  margin-top:15px;
+}
+
+/* FOOTER */
+
+.footer{
+  text-align:center;
+  padding:20px;
+  color:rgba(255,255,255,0.3);
+  font-size:12px;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+
+<div class="header">
+
+  <h1 class="title">
+    WebGIS <span>BTS Riau</span>
+  </h1>
+
+  <p class="subtitle">
+    Sistem Informasi Geografis Persebaran BTS di Provinsi Riau
+  </p>
+
+</div>
+
+<div class="container">
+
+  <div class="grid">
+
+    <!-- SIDEBAR -->
+
+    <div class="sidebar">
+
+      <!-- FILTER -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Filter Operator
+        </div>
+
+        <select id="operatorFilter">
+          <option value="all">Semua Operator</option>
+          <option value="Telkomsel">Telkomsel</option>
+          <option value="XL">XL</option>
+          <option value="Indosat">Indosat</option>
+          <option value="Smartfren">Smartfren</option>
+        </select>
+
+      </div>
+
+      <!-- STATISTIK -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Statistik BTS
+        </div>
+
+        <div class="stat">
+          <div class="stat-number" id="totalBTS">
+            0
+          </div>
+
+          <div class="stat-label">
+            Total BTS
+          </div>
+        </div>
+
+        <div class="stat">
+          <div class="stat-number">
+            4
+          </div>
+
+          <div class="stat-label">
+            Operator
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LEGENDA -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Legenda
+        </div>
+
+        <div class="legend">
+
+          <div class="legend-item">
+            <div class="dot" style="background:green"></div>
+            Kepadatan Rendah
+          </div>
+
+          <div class="legend-item">
+            <div class="dot" style="background:yellow"></div>
+            Kepadatan Sedang
+          </div>
+
+          <div class="legend-item">
+            <div class="dot" style="background:orange"></div>
+            Kepadatan Tinggi
+          </div>
+
+          <div class="legend-item">
+            <div class="dot" style="background:red"></div>
+            Kepadatan Sangat Tinggi
+          </div>
+
+          <div class="legend-item">
+            📡 Marker BTS
+          </div>
+
+          <div class="legend-item">
+            🔥 Heatmap
+          </div>
+
+          <div class="legend-item">
+            🧩 Clustering
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- SUMBER DATA -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Sumber Data
+        </div>
+
+        <p>• OpenCelliD</p>
+        <p>• KOMINFO</p>
+        <p>• BIG</p>
+        <p>• OpenStreetMap</p>
+
+      </div>
+
+      <!-- REPORT -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Report
+        </div>
+
+        <button onclick="downloadPDF()">
+          Download Report PDF
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- MAP AREA -->
+
+    <div>
+
+      <!-- MAP -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Persebaran BTS Riau
+        </div>
+
+        <div id="map"></div>
+
+      </div>
+
+      <!-- CHART -->
+
+      <div class="card" style="margin-top:20px;">
+
+        <div class="card-title">
+          Pertumbuhan BTS Tiap Tahun
+        </div>
+
+        <canvas id="chart"></canvas>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div class="footer">
+  SIG TERAPAN · WEBGIS BTS RIAU
+</div>
+
+<script>
+
+/* ===================================
+   MAP
+=================================== */
+
+const map = L.map('map').setView([0.5071,101.4478],7);
+
+L.tileLayer(
+  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {
+    attribution:'© OpenStreetMap'
+  }
+).addTo(map);
+
+/* ===================================
+   DATA BTS
+=================================== */
+
+const btsData = [
+
+  {
+    lat:0.5071,
+    lng:101.4478,
+    operator:'Telkomsel',
+    jaringan:'4G'
+  },
+
+  {
+    lat:0.52,
+    lng:101.45,
+    operator:'XL',
+    jaringan:'5G'
+  },
+
+  {
+    lat:0.53,
+    lng:101.46,
+    operator:'Indosat',
+    jaringan:'4G'
+  },
+
+  {
+    lat:0.54,
+    lng:101.47,
+    operator:'Smartfren',
+    jaringan:'4G'
+  },
+
+  {
+    lat:0.56,
+    lng:101.49,
+    operator:'Telkomsel',
+    jaringan:'5G'
+  },
+
+  {
+    lat:0.57,
+    lng:101.50,
+    operator:'XL',
+    jaringan:'4G'
+  },
+
+  {
+    lat:0.59,
+    lng:101.52,
+    operator:'Indosat',
+    jaringan:'5G'
+  },
+
+  {
+    lat:0.60,
+    lng:101.53,
+    operator:'Telkomsel',
+    jaringan:'4G'
+  }
+
+];
+
+/* ===================================
+   TOTAL BTS
+=================================== */
+
+document.getElementById('totalBTS').innerHTML = btsData.length;
+
+/* ===================================
+   CLUSTER GROUP
+=================================== */
+
+let cluster = L.markerClusterGroup();
+
+/* ===================================
+   LOAD MARKERS
+=================================== */
+
+function loadMarkers(operator='all'){
+
+  cluster.clearLayers();
+
+  let filtered = btsData.filter(data => {
+
+    if(operator === 'all'){
+      return true;
+    }
+
+    return data.operator === operator;
+
+  });
+
+  filtered.forEach(data=>{
+
+    const marker = L.marker([data.lat,data.lng]);
+
+    marker.bindPopup(`
+      <b>Operator:</b> ${data.operator}<br>
+      <b>Jaringan:</b> ${data.jaringan}<br>
+      <b>Status:</b> Aktif
+    `);
+
+    cluster.addLayer(marker);
+
+  });
+
+  map.addLayer(cluster);
+
+}
+
+/* ===================================
+   DEFAULT MARKER
+=================================== */
+
+loadMarkers();
+
+/* ===================================
+   FILTER
+=================================== */
+
+document.getElementById('operatorFilter')
+.addEventListener('change',function(){
+
+  loadMarkers(this.value);
+
+});
+
+/* ===================================
+   HEATMAP
+=================================== */
+
+const heatPoints = btsData.map(data=>[
+  data.lat,
+  data.lng,
+  1
+]);
+
+L.heatLayer(heatPoints,{
+
+  radius:30,
+  blur:25,
+
+  gradient:{
+
+    0.2:'green',
+    0.4:'yellow',
+    0.6:'orange',
+    1.0:'red'
+
+  }
+
+}).addTo(map);
+
+/* ===================================
+   CHART
+=================================== */
+
+const ctx = document.getElementById('chart');
+
+new Chart(ctx,{
+
+  type:'line',
+
+  data:{
+
+    labels:[
+      '2020',
+      '2021',
+      '2022',
+      '2023',
+      '2024',
+      '2025'
+    ],
+
+    datasets:[{
+
+      label:'Jumlah BTS',
+
+      data:[
+        120,
+        180,
+        260,
+        390,
+        520,
+        710
+      ],
+
+      borderWidth:3,
+      tension:0.4,
+      fill:true
+
+    }]
+
+  },
+
+  options:{
+    responsive:true
+  }
+
+});
+
+/* ===================================
+   PDF REPORT
+=================================== */
+
+function downloadPDF(){
+
+  html2pdf()
+  .set({
+
+    margin:0.5,
+
+    filename:'Report_BTS_Riau.pdf',
+
+    image:{
+      type:'jpeg',
+      quality:1
+    },
+
+    html2canvas:{
+      scale:2
+    },
+
+    jsPDF:{
+      unit:'in',
+      format:'a4',
+      orientation:'portrait'
+    }
+
+  })
+
+  .from(document.body)
+  .save();
+
+}
+
+</script>
+
+</body>
+</html>
